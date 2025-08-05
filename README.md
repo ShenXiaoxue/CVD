@@ -25,3 +25,4 @@ docker compose build
 docker compose up
 ```
 
+And access the web page at localhost:5000
