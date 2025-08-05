@@ -1,8 +1,3 @@
-# Snow research
-
-First commit - July 2025
-
-
 
 ## Deployment Instruction
 - Before running the project, make sure both the Docker and Docker Compose have been installed.
@@ -29,6 +24,4 @@ sudo chmod 777 /var/run/docker.sock
 docker compose build
 docker compose up
 ```
-## Access the website:
 
-![Example Image](snowresearch.png)
