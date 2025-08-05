@@ -1,0 +1,552 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="wrapper" style="position: relative;">
+  <!-- D3 GRAPH CONTAINER -->
+  <div id="graph" style="width: 100%; height: 1200px; border: 1px solid #ccc; position: relative;">
+    <!-- D3 will append its <svg> here -->
+      <!-- <a href="/"> -->
+      <!--   <picture> -->
+      <!--     <source media="(min-width: 768px)" srcset="{{ url_for('static', filename='img/CVDnet.png') }}">       <\!--  logo.png  -\-> -->
+      <!--       <img class="resp" alt="CVD Illustration" src="{{ url_for('static', filename='img/CVDnet.png') }}" width = "500"> -->
+      <!--   </picture> -->
+      <!-- </a> -->
+  </div>
+  
+  <p>
+    Links to other pages: <a href="/help">help / modules</a>
+  </p>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+  // ─── PART A: Set up variables to hold graph state ─────────────────────────
+  //
+  let graphData;         // will hold { nodes: […], links: […] }
+  let simulation;        // the D3 forceSimulation
+  let nodeSelection;     // D3 selection for circles
+  let labelSelection;    // D3 selection for node‐labels (<text>)
+  //const width = window.innerWidth;
+  //const height = window.innerHeight;
+  const width = document.getElementById("graph").offsetWidth;
+  const height = document.getElementById("graph").offsetHeight;
+  
+  async function loadGraphData() {
+      const response = await fetch("/graph-data");
+      const jsonld = await response.json();
+      console.log("jsonld:", jsonld);
+      const nodes = [];
+      const links = [];
+
+      // Helper: track unique nodes by @id
+      const nodeMap = new Map();
+
+
+      // Helper: Extract all triples
+      for (const entity of jsonld) {
+	  const subjectId = entity["@id"];
+	  if (!subjectId) continue;
+	  
+	  const label =
+		(entity["http://www.w3.org/2000/01/rdf-schema#label"] &&
+		 entity["http://www.w3.org/2000/01/rdf-schema#label"][0]["@value"]) ||
+		subjectId;
+
+	  const types = entity["@type"] || [];
+	  const subjectNode = {
+	      id: subjectId,
+	      label: label,
+	      types: types.map(t => t.split("/").pop())
+	  };
+
+	  
+	  //console.log("id:", subjectId);
+	  //console.log("label:", label);
+	  //console.log("types:",types);
+	  
+	  // Add subject node if not already added
+	  if (!nodeMap.has(subjectId)) {
+	      nodeMap.set(subjectId, subjectNode);
+	  }
+			 
+	  //console.log("entity:", entity);
+	  // Create nodes and edges for all predicates
+	  for (const [predicate, values] of Object.entries(entity)) {
+	      console.log("predicate:",predicate);
+	      console.log("values:",values);
+	      console.log("");
+	      
+              if (predicate === "@id" ||
+		  predicate === "@type" ||
+		  predicate === "http://www.w3.org/2000/01/rdf-schema#label" //||
+		  //predicate === "http://example.org/layer#hasLayer"
+		 ) continue;
+	      
+              if (Array.isArray(values)) {
+		  for (const val of values) {
+		      let objectID, objectLabel;
+		      
+		      if (val["@id"]) {
+			  // Object resource (reference to another node)
+			  objectId = val["@id"];
+			  objectLabel = val["@id"]
+
+			  // Add object node if not present
+			  if (!nodeMap.has(objectId)) {
+			      nodeMap.set(objectId, {
+				  id: objectId,
+				  label: objectLabel,
+				  types: []
+			      });
+			  }
+		      } else if (val["@value"] !== undefined) {
+			  // Literal node: generate a pseudo-ID using the value
+			  const literalValue = val["@value"];
+			  objectId = `literal-${literalValue}`;
+			  objectLabel = String(literalValue);
+
+			  // Add literal node if not present
+			  if (!nodeMap.has(objectId)) {
+			      nodeMap.set(objectId, {
+				  id: objectId,
+				  label: objectLabel,
+				  types: ["Literal"]
+			      });
+			  }
+		      }
+
+		      // Add the link (predicate as relationship)
+		      if (objectId) {
+			  links.push({
+			      source: subjectId,
+			      target: objectId,
+			      relationship: predicate.split("/").pop() // shorten predicate
+			  });
+		      }
+		  }
+              }
+	  }
+      }
+
+      const Layer0 = ["Pulmonary Arterial Hypertension"]   // label
+      const Layer1 = ["Patient"]                           // type
+      // Final node list
+      const nodesArray = Array.from(nodeMap.values());
+      
+      const graphData = { nodes: nodesArray, links };
+      
+      console.log("GraphData:", graphData);
+      
+      
+      // Calculate node degree (number of links per node)
+      const nodeDegree = {};
+      graphData.links.forEach(link => {
+	  const src = typeof link.source === "object" ? link.source.id : link.source;
+	  const tgt = typeof link.target === "object" ? link.target.id : link.target;
+	  
+	  nodeDegree[src] = (nodeDegree[src] || 0) + 1;
+	  nodeDegree[tgt] = (nodeDegree[tgt] || 0) + 1;
+      });
+
+      const maxDegree = Math.max(...Object.values(nodeDegree));
+      console.log("Maximum node degree:", maxDegree);
+      
+      // Attach degree to each node
+      graphData.nodes.forEach(node => {
+	  node.degree = nodeDegree[node.id] || 0;
+      });
+      
+      graphData.links.forEach(link => {
+	  const srcId = typeof link.source === "object" ? link.source.id : link.source;
+	  const tgtId = typeof link.target === "object" ? link.target.id : link.target;
+	  
+	  const srcDeg = nodeDegree[srcId] || 0;
+	  const tgtDeg = nodeDegree[tgtId] || 0;
+	  
+	  //link.avgDegree = (srcDeg + tgtDeg) / 2;
+	  link.minDegree = Math.min(srcDeg, tgtDeg);
+      });
+      
+      const minNodeFont = 20;  // for node label
+      const maxNodeFont = 20;  // for node label  24
+      
+      const minFont = 20;  // for link label
+      const maxFont = 20;  // for link label
+      // Step 1: Find min and max minDegree  degrees from the links
+      //const avgDegrees = graphData.links.map(link => link.avgDegree);
+      const minDegrees = graphData.links.map(link => link.minDegree);
+      const minValue = Math.min(...minDegrees);
+      const maxValue = Math.max(...minDegrees);
+      //const minAvgDegree = Math.min(...avgDegrees);
+      //const maxAvgDegree = Math.max(...avgDegrees);
+      
+      // Define the log scale of the link stroke width
+      const minStroke = 0.5;
+      const maxStroke = 1;
+      
+      const minVal = Math.min(...graphData.links.map(link => link.minDegree));
+      const maxVal = Math.max(...graphData.links.map(link => link.minDegree));
+      // console.log('minVal:', minVal);
+      // console.log('maxVal:', maxVal);
+      function scaleStroke(minDegree) {
+	  if (minVal === maxVal) return (minStroke + maxStroke) / 2;
+	  // Log scale
+	  const logMin = Math.log(minVal + 1);
+	  const logMax = Math.log(maxVal + 1);
+	  const logCurrent = Math.log(minDegree + 1);
+	  return minStroke + ((logCurrent - logMin) / (logMax - logMin)) * (maxStroke - minStroke);
+      }
+      
+      // Step 2: Define scaling function for font size
+      function scaleFontSize(minDegree) {
+	  if (maxValue  === minValue) return `${(minFont + maxFont) / 2}px`;
+	  // Use log scale mapping
+	  const logMin = Math.log(minValue + 1); // +1 to avoid log(0)
+	  const logMax = Math.log(maxValue + 1);
+	  const logCurrent = Math.log(minDegree + 1);
+	  //const scaled = minFont + ((minDegree - minValue) / (maxValue - minValue)) * (maxFont - minFont);
+	  const scaled = minFont + ((logCurrent - logMin) / (logMax - logMin)) * (maxFont - minFont);
+	  return `${scaled}px`;
+      }
+      
+      // Draw using your existing function
+      // drawInitialGraph({ nodes: nodesArray, links });
+      // 2) Build a color scale based on unique labels:
+      const uniqueLabels = Array.from(new Set(graphData.nodes.flatMap(n => n.label)));
+      const color = d3.scaleOrdinal().domain(uniqueLabels).range(d3.schemeCategory10);
+      
+      
+      // 4) Create <svg> container:
+      const svg = d3.select("#graph")
+	    .append("svg")
+	    .attr("width", width)
+	    .attr("height", height)
+	    .attr("viewBox", [0, 0, width, height])
+	    .style("max-width", "100%")
+	    .style("height", "auto");
+      
+      // 5) Define arrowhead marker:
+      // Step 1: Get unique colours from target node labels
+      //const uniqueColors = Array.from(new Set(graphData.nodes.map(n => color(n.labels[0]))));
+      const uniqueColors = Array.from(new Set(graphData.nodes.map(n => color(n.types?.[0]))));
+      // Step 2: Create a marker for each unique colour
+      const defs = svg.append("defs");
+      uniqueColors.forEach((clr, i) => {
+	  defs.append("marker")
+	      .attr("id", `arrowhead-${i}`)
+	      .attr("viewBox", "0 -5 10 10")
+	      .attr("refX", 15)
+	      .attr("refY", 0)
+	      .attr("markerWidth", 6)
+	      .attr("markerHeight", 8)
+	      .attr("orient", "auto")
+	      .append("path")
+	      .attr("d", "M0,-5L10,0L0,5")
+	      .attr("fill", clr);
+      });
+
+      function customCenteringForce(cx, cy, fixedRadius = 200) {
+	  return () => {
+	      // ---------------------------------------------------------------------------
+	      // Find all the Layer0 nodes with a label of "Pulmonary Arterial Hypertension"
+	      const PAHNodes = graphData.nodes.filter(node => (
+		  typeof node.label === "string" &&
+		      Array.isArray(node.types) &&
+		      node.label.includes("Pulmonary Arterial Hypertension") &&
+		      node.types[0] === "Condition"
+	      ));
+
+	      PAHNodes.forEach(PAHNode => {
+		  PAHNode.vx += (cx - PAHNode.x) * 0.1; // Adjust the strength of attraction
+		  PAHNode.vy += (cy - PAHNode.y) * 0.1;
+	      });
+
+	      // ---------------------------------------------------------------------------
+	      // Find all the Layer1 nodes
+	      const patientNodes = graphData.nodes.filter(node => (
+		  typeof node.types[0] === "Patient"
+	      ));
+	      // Evenly distribute the patient nodes around this PAH node
+	      const numPatients = patientNodes.length
+	      // Calculate the angle step for even distribution
+	      const angleStep = (2 * Math.PI) / numPatients;
+	      patientNodes.forEach((patientNode, index) => {
+		  // Calculate the angle for this agent node
+		  const angle = index * angleStep;
+		  // Calculate the target position at the fixed radius from the product node
+		  const targetX = PAHNodes.x + fixedRadius * Math.cos(angle);
+		  const targetY = PAHNodes.y + fixedRadius * Math.sin(angle);
+		  // Adjust the agent node's velocity to move it toward the target position
+		  patientNode.vx += (targetX - agentNode.x) * 0.1; // Adjust strength as needed
+		  patientNode.vy += (targetY - agentNode.y) * 0.1;
+		  // ---------------------------------------------------------------------------
+		  // Evenly distribute the Layer2 nodes linked to Layer1 node
+		  //const layer2Nodes = 
+		  // ---------------------------------------------------------------------------
+	      });
+
+	      // ---------------------------------------------------------------------------
+	      
+	  };
+      }
+      
+      // 6) Build the force simulation:
+      simulation = d3.forceSimulation(graphData.nodes)
+	  .force("link", d3.forceLink(graphData.links).id(d => d.id).distance(300)) // 300
+	  .force("charge", d3.forceManyBody().strength(-150))
+	  .force("center", d3.forceCenter(width / 2, height / 2 ))
+	  .force("customCenter", customCenteringForce(width / 2, height / 2))
+	  // .force("x", d3.forceX(width / 1.5).strength(d => {
+	  //     const degree = nodeDegree[d.id] || 1;
+	  //     return Math.log(degree + 1) * 0.01; // stronger pull for higher degree
+	  // }))
+	  // .force("y", d3.forceY(height / 2).strength(d => {
+	  //     const degree = nodeDegree[d.id] || 1;
+	  //     return Math.log(degree + 1) * 0.01;
+	  // }))
+	  // .force("radial", d3.forceRadial(d => {
+	  //     const degree = nodeDegree[d.id] || 1;
+	  //     // Higher degree -> closer to center
+	  //     return 50 + (1 - degree / maxDegree) * 300;  // min: 50, max: 350 outward
+	  // }, width / 2, height /2).strength(0.8))
+	  .force("collision", d3.forceCollide().radius(d => {
+	      const degree = nodeDegree[d.id] || 1;
+	      return 15 + Math.sqrt(degree) * 8 ; // radius + padding
+	  }))
+	  .on("tick", ticked);
+      
+      // 7) Draw links (lines):
+      const linkSelection = svg.append("g")
+	    .attr("stroke-opacity", 0.6)
+	    .selectAll("line")        // line for straight
+	    .data(graphData.links)
+	    .join("line")             // line for straight
+	    .attr("stroke", d => {  
+		const tgt = graphData.nodes.find( n => n.id === d.target.id);
+		//console.log('tgt:', tgt);
+		//console.log('tgt.labels:', tgt.label);
+		return tgt ? color(tgt.label) : "#999";
+	    })
+	    .attr("stroke-width", d => scaleStroke(d.minDegree))   // 2
+	    .attr("marker-end", d => {
+		const tgt = graphData.nodes.find(n => n.id === d.target.id);
+		const clr = tgt ? color(tgt.label) : "#999";
+		const index = uniqueColors.indexOf(clr);
+		return `url(#arrowhead-${index})`;
+	    });
+	    //.style("display", "none");  //  Hides links by default
+      
+      
+      // console.log("linkSelection:", linkSelection);
+      // 8) Draw nodes (circles) and keep a handle on the selection:
+      nodeSelection = svg.append("g")
+	  .attr("stroke", "#fff")
+	  .attr("stroke-width", 1.5)
+	  .selectAll("circle")
+	  .data(graphData.nodes)
+	  .join("circle")
+	  .attr("r", d => {
+	      //console.log('d',  d);
+	      if (d.label.includes("Pulmonary Arterial Hypertension") && d.types[0] === "Condition") {
+		  //console.log('Organization node:', nodeDegree[d.id]);
+		  return 40;   // Maximum
+	      }
+	      const degree = nodeDegree[d.id] || 1; // fallback to 1
+	      return 15 + Math.sqrt(degree) * 4; // tune base size + growth
+	  })
+	  .attr("fill", d => color(d.label))
+	  .call(drag(simulation));
+    
+      // 9) Attach a simple tooltip (title=…) so you can hover:
+      nodeSelection.append("title")
+	  .text(d => JSON.stringify(d.properties));
+
+      // Define prefixes to strip
+      // Define prefixes to strip
+      const prefixes = [
+	  "http://example.org/",
+	  "http://hl7.org/fhir/",
+	  "http://xmlns.com/foaf/0.1/",
+	  "http://purl.obolibrary.org/obo/MONDO_",
+	  "http://www.w3.org/2000/01/rdf-schema#",
+	  "http://snomed.info/id/",
+	  "http://www.w3.org/2001/XMLSchema#"
+      ];
+
+      // Utility function to remove any prefix
+      function stripPrefix(uri) {
+	  for (const prefix of prefixes) {
+              if (uri.startsWith(prefix)) {
+		  return uri.replace(prefix, "");
+              }
+	  }
+	  return uri;
+      }
+      
+      // 10) Draw labels (<text>) and keep a handle on that selection:
+      labelSelection = svg.append("g")
+	  .selectAll("text")
+	  .data(graphData.nodes)
+	  .join("text")
+	  .attr("text-anchor", "middle")
+	  .attr("alignment-baseline", "middle") 
+	  .attr("font-size", d => {
+              // scale font size between 4 and 24, depending on degree
+              //const minFont = 4, maxFont = 24;
+	      if (d.label.includes("Pulmonary Arterial Hypertension") && d.types[0] === "Condition") {
+		  return 30;   // Maximum
+	      }
+	      const scale = d3.scaleLinear()
+		    .domain(d3.extent(graphData.nodes, n => n.degree || 1))
+		    .range([minNodeFont, maxNodeFont]);
+	      return scale(d.degree || 1);
+	  })
+	  .text(d => {
+	      const labelProp = d.properties?.["http://www.w3.org/2000/01/rdf-schema#label"];
+	      if (labelProp && labelProp[0] && labelProp[0]["@value"]) {
+		  return labelProp[0]["@value"];
+	      }
+	      // fallback: short form of d.id
+	      return stripPrefix(d.label || d.id);
+	  })
+      
+      // 11) Draw link‐labels (same as before, no need to keep reference if you never change them):
+      linkLabels = svg.append("g")
+       	  .selectAll("text")
+       	  .data(graphData.links)
+       	  .join("text")
+       	  .attr("text-anchor", "middle")
+       	  .attr("alignment-baseline", "middle")
+       	  .attr("font-size", d => scaleFontSize(d.minDegree))
+       	  .attr("fill", d => {
+              // color based on the target node’s label
+	      const tgt = graphData.nodes.find(n => n.id === d.target.id);   // n => n.element_id === d.target.element_id
+	      return tgt ? color(tgt.label) : "#666";
+	  })
+	  .attr("font-weight","normal")
+	  .text(d => d.relationship);
+	  //.style("display", "none");
+    
+    
+      
+      // 12) Ticked function: update positions of lines/circles/text on every tick
+      function ticked() {
+	  // Update link positions
+	  svg.selectAll("line")
+              .attr("x1", d => {
+		  // Calculate the direction vector of the line
+		  const dx = d.target.x - d.source.x;
+		  const dy = d.target.y - d.source.y;
+		  // Normalize the direction vector
+		  const length = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+		  const nx = dx / length;
+		  const ny = dy / length;
+		  // Calculate perpendicular vector (rotate 90 degrees)
+		  const px = -ny;
+		  const py = nx;
+		  // Apply small displacement (e.g., 5 pixels) in perpendicular direction
+		  const offset = 10;
+		  return d.source.x;    //  + px * offset
+	      })
+              .attr("y1", d => {
+		  const dx = d.target.x - d.source.x;
+		  const dy = d.target.y - d.source.y;
+		  const length = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+		  const nx = dx / length;
+		  const ny = dy / length;
+		  const px = -ny;
+		  const py = nx;
+		  const offset = 10;
+		  return d.source.y;   // + py * offset
+ 	      })
+              .attr("x2", d => {
+		  // Calculate the direction vector of the line
+		  const dx = d.target.x - d.source.x;
+		  const dy = d.target.y - d.source.y;
+		  // Normalize the direction vector
+		  const length = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+		  const nx = dx / length;
+		  const ny = dy / length;
+		  // Calculate perpendicular vector (rotate 90 degrees)
+		  const px = -ny;
+		  const py = nx;
+		  // Apply small displacement (e.g., 5 pixels) in perpendicular direction
+		  const offset = 10;
+		  return d.target.x ;   // + px * offset
+	      })
+              .attr("y2", d => {
+		  const dx = d.target.x - d.source.x;
+		  const dy = d.target.y - d.source.y;
+		  const length = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+		  const nx = dx / length;
+		  const ny = dy / length;
+		  const px = -ny;
+		  const py = nx;
+		  const offset = 10;
+		  return d.target.y ;   // + py * offset
+	      });
+	  
+	  // Update node positions
+	  nodeSelection
+              .attr("cx", d => d.x)
+              .attr("cy", d => d.y);
+	  
+	  // Update label positions
+	  labelSelection
+              .attr("x", d => d.x)
+              .attr("y", d => d.y);
+	  
+	  // Update link label positions (place at the midpoint of the link)
+	  linkLabels
+	      .attr("x", d => {
+		  const midX = (d.source.x + d.target.x) / 2; // Midpoint x
+		  const dx = d.target.x - d.source.x;
+		  const dy = d.target.y - d.source.y;
+		  const len = Math.sqrt(dx*dx + dy*dy) || 0.0001;
+		  const direction =  -Math.sign(Math.atan2(d.target.y - d.source.y, d.target.x - d.source.x));
+		  return midX ;  // + (-dy / len) * 20 * direction shift by 10px perpendicular to link
+	      })
+	      .attr("y", d => {
+		  const midY = (d.source.y + d.target.y) / 2; // Midpoint y
+		  const dx = d.target.x - d.source.x;
+		  const dy = d.target.y - d.source.y;
+		  const len = Math.sqrt(dx*dx + dy*dy) || 0.0001;
+		  const direction =  Math.sign(Math.atan2(d.target.y - d.source.y, d.target.x - d.source.x));
+		  return midY;  // + (dx / len) * 20 * direction shift by 10px perpendicular to link
+	      })
+	      .attr("transform", d => {
+		  const angle = Math.atan2(d.target.y - d.source.y, d.target.x - d.source.x) * (180 / Math.PI);
+		  return `rotate(${angle}, ${(d.source.x + d.target.x) / 2}, ${(d.source.y + d.target.y) / 2})`;
+	      });
+	  
+	  
+      }
+      
+      // 13) Dragging behavior helper
+      function drag(sim) {
+	  return d3.drag()
+              .on("start", (event, d) => {
+		  if (!event.active) sim.alphaTarget(0.3).restart();
+		  d.fx = d.x;
+		  d.fy = d.y;
+              })
+              .on("drag", (event, d) => {
+		  d.fx = event.x;
+		  d.fy = event.y;
+              })
+              .on("end", (event, d) => {
+		  if (!event.active) sim.alphaTarget(0);
+		  d.fx = null;
+		  d.fy = null;
+              });
+      }
+  }
+  
+  
+  loadGraphData();
+  
+</script>
+{% endblock %}
+
+
+

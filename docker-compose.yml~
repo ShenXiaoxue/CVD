@@ -1,0 +1,58 @@
+version: '3'
+services:
+  web:
+    build: .
+    restart: always    # unless-stopped  #always   - may change this to "always" when running
+    ports:
+      - "5000:5000"
+    expose:
+      - "5000"              # it works with the "expose" option
+    networks:
+      mynetwork:
+    environment:
+      - PYTHONUNBUFFERED=1
+    tty: true
+    stdin_open: true
+    #links:
+    #  - neo4j
+    #depends_on:
+    #  - neo4j
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: /bin/sh -c "gunicorn --bind 0.0.0.0:5000 'snowresearch:create_app()'"
+
+  # neo4j:
+  #   image: neo4j:latest    #  4.1.13  
+  #   restart: always
+  #   container_name: neo4j
+  #   ports:
+  #     - "7475:7474"
+  #     - "7688:7687"
+  #   environment:
+  #      NEO4J_AUTH: neo4j/12345678
+  #      NEO4J_PLUGINS: '["apoc"]'
+  #      NEO4J_dbms_security_procedures_unrestricted: apoc.*,apoc.meta.data
+  #      NEO4J_apoc_meta_unsafe: true
+  #   networks:
+  #     mynetwork:
+  #   volumes:
+  #     - $HOME/neo4j/data:/data
+  #     #- $HOME/neo4j/logs:/logs
+  #     #- $HOME/neo4j/import:/import
+  #     #- $HOME/neo4j/plugins:/plugins
+  #     #- ./digitaltwin/library/fenicsx/shared:/root/shared
+  #     #- $HOME/neo4
+  #     # - neo4j_logs:/logs
+  #     # - neo4j_import:/var/lib/neo4j/import
+  #     # - neo4j_plugins:/plugins
+  #   #command: gunicorn --bind 0.0.0.0:5000 "snowresearch:create_app()"
+  #   #restart: unless-stopped
+
+networks:
+  mynetwork:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

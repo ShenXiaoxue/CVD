@@ -1,0 +1,123 @@
+"""
+This is the main function that creates the blueprint, imports in the modules, and defines some generic routes such as the home and error pages.
+"""
+from flask import render_template, request, redirect, url_for, flash, abort, session, jsonify, Blueprint
+import yfinance as yf
+import threading
+
+bp = Blueprint('snowresearch', __name__) # Creates the name of the app
+
+#from .library import buildgraph
+#from .library import loadTTL
+#from .library import buildgraph_new
+#from .library import data_extact
+
+import numpy as np
+import time
+import subprocess
+
+@bp.route('/')
+@bp.route('/home')
+@bp.route('/index')
+def home():
+    return render_template('home.html')    # home.html
+
+@bp.app_errorhandler(404)
+def page_not_found(error):
+    return render_template('page_not_found.html'), 404
+
+
+# Initialise the knowledge graph
+#kg_ = buildgraph.knowledgeGraph()
+
+from .routes import module2
+
+
+####################################
+@bp.route('/latest-price')
+def latest_price():
+    # Fetch 1-minute‐interval history for today and grab the last close
+    rel_ = {}
+    # FX
+    for from_code in kg_.currencies:
+        for to_code in kg_.currencies:
+            if from_code != to_code:
+                rel_label = from_code + to_code
+                forex_pair = yf.Ticker(rel_label + "=X")   #
+                data = forex_pair.history(period="1d", interval="1m")
+                if not data.empty:
+                    # .iloc[-1] is the newest row; cast to float so jsonify can encode it
+                    latest_price = float(data['Close'].iloc[-1])
+                    rel_[rel_label] = {"price": latest_price}
+                    kg_.updatePrice(rel_label, latest_price)
+                    kg_.refresh()
+    # Metals
+    for from_code in kg_.metals:
+        rel_label = from_code + "USD"
+        if rel_label == "XAUUSD":
+            forex_pair = yf.Ticker("GC=F")   #  rel_label + "=X"
+        elif rel_label == "XAGUSD":
+            forex_pair = yf.Ticker("SI=F")
+        data = forex_pair.history(period="1d", interval="1m")
+        if not data.empty:
+            # .iloc[-1] is the newest row; cast to float so jsonify can encode it
+            latest_price = float(data['Close'].iloc[-1])
+            rel_[rel_label] = {"price": latest_price}
+            kg_.updatePrice(rel_label, latest_price)
+            kg_.refresh()
+    #print("rel_", rel_)
+    #print(jsonify(rel_))
+    return jsonify(rel_)
+
+
+                    
+    # forex_pair = yf.Ticker("GBPUSD=X")
+    # data = forex_pair.history(period="1d", interval="1m")
+    # if not data.empty:
+    #     # .iloc[-1] is the newest row; cast to float so jsonify can encode it
+    #     latest_price = float(data['Close'].iloc[-1])
+    #     kg_.updatePrice("GBPUSD", latest_price)
+    #     kg_.refresh()
+    #     return jsonify({"price": latest_price})
+    # else:
+    #     return jsonify({"price": None}), 404
+
+"""
+        // 2) Once the graph is drawn, immediately fetch the live price and update the “value” node:
+      //   fetch('/latest-price')
+      //     .then(r => r.json())
+      //     .then(json => {
+      //       if (json.price !== null) {
+      //         updateValueNode(json.price);
+      //       }
+      //     })
+      //     .catch(console.error);
+      // })
+      // .catch(err => console.error("Error loading graph-data:", err));
+
+    // 3) Set up a single timer that every 10 s does BOTH:
+    //    • fetchPrice() → updates the top banner  
+    //    • fetch('/latest-price') → update the one node in the graph
+    setInterval(() => {
+      // A) Update the top banner:
+      fetchPrice();
+
+      // B) Fetch new price and update just the “value” node:
+      fetch('/latest-price')
+        .then(resp => {
+          if (!resp.ok) throw new Error("Network response was not OK");
+          return resp.json();
+        })
+        .then(data => {
+          if (data.price !== null) {
+            updateValueNode(data.price);
+          }
+        })
+        .catch(err => console.error("Error updating value node:", err));
+    }, 100000);
+"""
+
+
+
+
+

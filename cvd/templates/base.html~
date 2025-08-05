@@ -1,0 +1,65 @@
+{% from 'bootstrap5/nav.html' import render_nav_item %}
+<!doctype html>
+<html lang="en">
+    <head>
+        {% block head %}
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6337870360452630"
+     crossorigin="anonymous"></script>
+        {% block styles %}
+        <!-- Bootstrap CSS -->
+            {{ bootstrap.load_css() }}
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:ital,wght@0,200;0,300;0,400;0,600;0,700;0,900;1,200;1,300;1,400;1,600;1,700;1,900&display=swap" rel="stylesheet">
+            <!-- <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet"> -->
+            <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.svg') }}">
+
+        {% endblock %}
+	    
+        <title>CVD-Net</title>
+
+        {% endblock %}
+    </head>
+    <body>
+        <section class="container-fluid" id="logo"> 
+          <div class="container d-flex justify-content-between align-items-center" style="padding: 10px 0;"> 
+                <!-- <a href="/"> -->
+                <!--     <picture> -->
+                <!--         <source media="(min-width: 768px)" srcset="{{ url_for('static', filename='img/snowresearch_logo.svg') }}">       <\!--  logo.png  -\-> -->
+                <!--         <img class="resp" alt="SnowResearch Logo" src="{{ url_for('static', filename='img/snowresearch_logo.svg') }}" width = "150"> -->
+                <!--     </picture> -->
+                <!-- </a> -->
+	      <!-- 	Text in Top-Right Corner -->
+	      <!-- <div style="text-align: left;"> -->
+              <!--   <h2 style="margin: 0; font-size: 1.5rem;">KG</h2> -->
+              <!--   <p style="margin: 0; font-size: 1.0rem;">Relationships.</p> -->
+		  <!-- </div> -->
+		<!-- Navigation bar under the logo -->
+		<!-- <nav class="container-fluid border-top border-bottom bg-white" style="white-space: nowrap; overflow-x: auto;"> -->
+		<!--   <div class="container px-0"> -->
+		<!--     <div class="d-flex flex-nowrap justify-content-start" style="font-weight: bold; font-size: 1rem;"> -->
+		<!--       <a href="#" class="px-3 py-2 text-dark text-decoration-none">Overview</a> -->
+		<!--       <a href="#" class="px-3 py-2 text-dark text-decoration-none">Gold</a> -->
+		<!--       <\!-- <a href="#" class="px-3 py-2 text-dark text-decoration-none">Blockchain</a> -\-> -->
+		<!--     </div> -->
+		<!--   </div> -->
+		<!-- </nav> -->
+          </div>
+        </section>
+
+        <section class="container-fluid" id="main-content">
+            <div class="container">
+                <!-- Each page content -->
+                {% block content %}{% endblock %}
+            </div>
+        </section>
+
+        {% block scripts %}
+            <!-- Optional JavaScript -->
+            {{ bootstrap.load_js() }}
+        {% endblock %}
+    </body>
+</html>

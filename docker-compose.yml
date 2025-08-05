@@ -1,0 +1,28 @@
+version: '3'
+services:
+  web:
+    build: .
+    restart: always    # unless-stopped  #always   - may change this to "always" when running
+    ports:
+      - "5000:5000"
+    expose:
+      - "5000"              # it works with the "expose" option
+    networks:
+      mynetwork:
+    environment:
+      - PYTHONUNBUFFERED=1
+    tty: true
+    stdin_open: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: /bin/sh -c "gunicorn --bind 0.0.0.0:5000 'cvd:create_app()'"
+
+
+networks:
+  mynetwork:
+    ipam:
+      config:
+        - subnet: 172.35.0.0/16

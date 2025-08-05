@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- <meta charset="utf-8" /> -->
+    <title>Live Rate</title>
+    <script>
+      function fetchPrice() {
+        fetch('/latest-price')
+          .then((resp) => {
+            if (!resp.ok) throw new Error("Network response was not OK");
+            return resp.json();
+          })
+          .then((data) => {
+            if (data.price !== null) {
+              // Update the <span id="price"> with the latest price
+              document.getElementById('price').innerText = data.price.toFixed(5);
+            } else {
+              document.getElementById('price').innerText = "N/A";
+            }
+          })
+          .catch((err) => {
+            console.error("Error fetching price:", err);
+            document.getElementById('price').innerText = "Error";
+          });
+      }
+
+      window.onload = function() {
+	  fetchPrice();
+	  setInterval(fetchPrice, 10000);
+      };
+    </script>
+</head>
+<body>
+  <h1>Number Counter</h1>
+  <p>
+    Current price: <strong><span id="price">Loading…</span></strong>
+  </p>
+</body>
+</html>

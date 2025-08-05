@@ -1,0 +1,20 @@
+@prefix ex: <http://example.org/> .
+@prefix fhir: <http://hl7.org/fhir/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix layer: <http://example.org/layer#> .
+@prefix mondo: <http://purl.obolibrary.org/obo/MONDO_> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Patient1 a fhir:Patient ;
+    layer:hasLayer ex:Layer1 ;
+    fhir:birthDate "1970-04-25"^^xsd:date ;
+    fhir:condition mondo:0015924 ;
+    fhir:gender "female" ;
+    fhir:id "123456" ;
+    foaf:name "Amelia Hart" .
+
+mondo:0015924 a fhir:Condition ;
+    rdfs:label "Pulmonary Arterial Hypertension" ;
+    layer:hasLayer ex:Layer0 .
+

@@ -1,0 +1,140 @@
+[
+    {
+        "@id": "http://example.org/lbma/ABC_Refinery_(Australia)_Pty_Ltd",
+        "@type": [
+            "https://spec.edmcouncil.org/fibo/ontology/FND/Parties/Parties/LegalEntity"
+        ],
+        "http://example.org/lbma/address": [
+            {
+                "@value": "12 Meeks Road Marrickville NSW 2204"
+            }
+        ],
+        "http://example.org/lbma/companyType": [
+            {
+                "@value": "Refiner"
+            }
+        ],
+        "http://example.org/lbma/country": [
+            {
+                "@value": "Australia"
+            }
+        ],
+        "http://example.org/lbma/membershipCategory": [
+            {
+                "@value": "Full Member"
+            }
+        ],
+        "http://www.w3.org/2000/01/rdf-schema#label": [
+            {
+                "@value": "ABC Refinery (Australia) Pty Ltd"
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/homepage": [
+            {
+                "@id": "https://www.abcrefinery.com/"
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/mbox": [
+            {
+                "@value": "info@abcrefinery.com"
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/phone": [
+            {
+                "@value": "1300 889 063"
+            }
+        ]
+    },
+    {
+        "@id": "http://example.org/lbma/ABC_Bullion",
+        "@type": [
+            "https://spec.edmcouncil.org/fibo/ontology/FND/Parties/Parties/LegalEntity"
+        ],
+        "http://example.org/lbma/address": [
+            {
+                "@value": "Level 6 88 Pitt Street Sydney NSW 2000 Australia"
+            }
+        ],
+        "http://example.org/lbma/companyType": [
+            {
+                "@value": "Trader"
+            }
+        ],
+        "http://example.org/lbma/country": [
+            {
+                "@value": "Australia"
+            }
+        ],
+        "http://example.org/lbma/membershipCategory": [
+            {
+                "@value": "Full Member"
+            }
+        ],
+        "http://www.w3.org/2000/01/rdf-schema#label": [
+            {
+                "@value": "ABC Bullion"
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/homepage": [
+            {
+                "@id": "https://www.abcbullion.com.au/"
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/mbox": [
+            {
+                "@value": "comms@abcbullion.com.au"
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/phone": [
+            {
+                "@value": "+61 2 9231 4511"
+            }
+        ]
+    },
+    {
+        "@id": "http://example.org/lbma/A-Mark_Precious_Metals_Inc.",
+        "@type": [
+            "https://spec.edmcouncil.org/fibo/ontology/FND/Parties/Parties/LegalEntity"
+        ],
+        "http://example.org/lbma/address": [
+            {
+                "@value": "2121 Rosecrans Avenue, Suite 6300, El Segundo, CA, USA"
+            }
+        ],
+        "http://example.org/lbma/companyType": [
+            {
+                "@value": "Trader"
+            }
+        ],
+        "http://example.org/lbma/country": [
+            {
+                "@value": "USA"
+            }
+        ],
+        "http://example.org/lbma/membershipCategory": [
+            {
+                "@value": "Affiliate Member"
+            }
+        ],
+        "http://www.w3.org/2000/01/rdf-schema#label": [
+            {
+                "@value": "A-Mark Precious Metals, Inc."
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/homepage": [
+            {
+                "@id": "https://www.amark.com/"
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/mbox": [
+            {
+                "@value": "trading@amark.com"
+            }
+        ],
+        "http://xmlns.com/foaf/0.1/phone": [
+            {
+                "@value": "+1 (0) 310 587 1485"
+            }
+        ]
+    }
+]
